@@ -6,12 +6,14 @@ final int LANE_COUNT = 3;
 
 PlayerCar player;
 ArrayList<EnemyCar> enemies = new ArrayList<EnemyCar>();
+ArrayList<Coin> coins = new ArrayList<Coin>();
 
 float roadOffset = 0;
 float speed = 5;
 int score = 0;
 int bestScore = 0;
 int spawnTimer = 0;
+int coinTimer = 0;
 boolean gameOver = false;
 
 void setup() {
@@ -33,6 +35,9 @@ void draw() {
   for (EnemyCar enemy : enemies) {
     enemy.draw();
   }
+  for (Coin coin : coins) {
+    coin.draw();
+  }
   player.draw();
   drawHud();
 }
@@ -44,11 +49,18 @@ void updateGame() {
 
   player.update();
   updateEnemies();
+  updateCoins();
 
   spawnTimer--;
   if (spawnTimer <= 0) {
     spawnEnemy();
     spawnTimer = max(26, int(70 - speed * 5));
+  }
+
+  coinTimer--;
+  if (coinTimer <= 0) {
+    spawnCoin();
+    coinTimer = int(random(80, 140));
   }
 }
 
@@ -66,6 +78,20 @@ void updateEnemies() {
   }
 }
 
+void updateCoins() {
+  for (int i = coins.size() - 1; i >= 0; i--) {
+    Coin coin = coins.get(i);
+    coin.update();
+
+    if (coin.y > height + 30) {
+      coins.remove(i);
+    } else if (rectsOverlap(player.x, player.y, player.w, player.h, coin.x, coin.y, coin.size, coin.size)) {
+      score += 150;
+      coins.remove(i);
+    }
+  }
+}
+
 void spawnEnemy() {
   int lane = int(random(LANE_COUNT));
   color[] colors = {
@@ -76,6 +102,11 @@ void spawnEnemy() {
   };
 
   enemies.add(new EnemyCar(laneCenter(lane) - 15, -60, colors[int(random(colors.length))]));
+}
+
+void spawnCoin() {
+  int lane = int(random(LANE_COUNT));
+  coins.add(new Coin(laneCenter(lane) - 10, -30));
 }
 
 void drawRoad() {
@@ -159,10 +190,12 @@ void keyPressed() {
 void resetGame() {
   player = new PlayerCar(1, height - 92);
   enemies.clear();
+  coins.clear();
   roadOffset = 0;
   speed = 5;
   score = 0;
   spawnTimer = 40;
+  coinTimer = 90;
   gameOver = false;
 }
 
@@ -218,6 +251,30 @@ class EnemyCar {
 
   void draw() {
     drawPixelCar(x, y, bodyColor, false);
+  }
+}
+
+class Coin {
+  float x;
+  float y;
+  float size = 20;
+
+  Coin(float startX, float startY) {
+    x = startX;
+    y = startY;
+  }
+
+  void update() {
+    y += speed;
+  }
+
+  void draw() {
+    fill(120, 81, 18);
+    rect(x + 3, y + 3, 14, 14);
+    fill(255, 208, 44);
+    rect(x + 2, y, 16, 20);
+    fill(255, 244, 126);
+    rect(x + 7, y + 4, 6, 12);
   }
 }
 
