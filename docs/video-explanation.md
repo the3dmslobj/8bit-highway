@@ -119,6 +119,42 @@ Say:
 
 > The sound is generated in code instead of using audio files. The audio engine creates simple square-wave sounds for the retro style. There is background music while playing, plus effects for moving, collecting coins, choosing a car, and crashing. The M key can mute or unmute the sound.
 
+Show the `melody` and `melodyDurations` arrays.
+
+Say:
+
+> The background music is stored as numbers. Each number in `melody` is a frequency, so it controls the pitch of a note. The `melodyDurations` array controls how long each note plays. By looping through these arrays, the game can make a simple repeating background tune.
+
+Show `startMusic()` and `runAudioLoop()`.
+
+Say:
+
+> The audio runs on a separate thread. This is important because the game still needs to draw and update smoothly while the sound is playing. The audio loop keeps filling a small buffer with sound samples and sends them to the speaker.
+
+Show `fillBuffer()`, `nextMusicSample()`, and `nextEffectSample()`.
+
+Say:
+
+> In `fillBuffer()`, the game mixes two things together: the background music and the current sound effect. If the game is muted, it skips both. If sound is on, it adds the music sample and the effect sample, then limits the value so the sound does not go outside the audio range.
+
+Show `squareWave()` and `advancePhase()`.
+
+Say:
+
+> The retro sound comes from a square wave. A square wave switches quickly between high and low values, which gives it that classic 8-bit sound. The `advancePhase()` function moves through the wave based on the note frequency.
+
+Show `playMove()`, `playCoin()`, `playCrash()`, and `playSelect()`.
+
+Say:
+
+> These functions are the sound effects. For example, collecting a coin plays higher notes, while crashing uses lower notes and noise to sound harsher. Each effect has notes, durations, volume, and a setting for whether it should use noise.
+
+Show `setMusicActive()` and `toggleMute()`.
+
+Say:
+
+> The main game turns music on when the player starts or resumes, and turns it off when the game is paused or over. The mute function is separate, so the player can turn off all sound with M.
+
 ### 8. Show pause and restart
 
 Run the game again if needed. Press `P`, then `P` again. Press `M` if you want to show mute.
@@ -147,7 +183,7 @@ Say:
 >
 > Collision detection uses rectangles. If the player touches a coin, the score increases by 150. If the player hits an enemy car, the game ends and the best score is updated.
 >
-> We also added generated retro audio in Java, so the game has background music and sound effects without needing separate sound files.
+> We also added generated retro audio in Java, so the game has background music and sound effects without needing separate sound files. The audio code uses frequency numbers for notes, durations for timing, square waves for the 8-bit sound, and a separate audio thread so the sound can play while the game keeps running.
 >
 > So the project shows Processing drawing, keyboard input, classes, ArrayLists, collision detection, score tracking, difficulty increase, and audio.
 
@@ -162,4 +198,6 @@ Say:
 - "This class stores the player car information."
 - "This ArrayList lets the game keep many enemies at once."
 - "This function checks if two rectangles are touching."
-
+- "The melody is made from frequency numbers instead of an audio file."
+- "The square wave gives the game its 8-bit sound."
+- "The audio thread lets sound play while the game keeps updating."
