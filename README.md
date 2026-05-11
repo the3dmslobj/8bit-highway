@@ -11,6 +11,7 @@ The player drives on a three-lane highway, avoids enemy cars, collects coins, an
 - Enemy cars that move down the road
 - Multiple enemy vehicle types, including compact cars, trucks, sports cars, and vans
 - Four selectable player car styles
+- Generated retro sound effects and background music
 - Collectible coins that add bonus points
 - Collision detection
 - Score and best score
@@ -28,6 +29,7 @@ The player drives on a three-lane highway, avoids enemy cars, collects coins, an
 - `c`: cycle player car styles on the start or game over screen
 - `space` or `enter`: start the game
 - `p`: pause or resume
+- `m`: mute or unmute sound
 - `r`: restart after game over
 
 ## Scoring

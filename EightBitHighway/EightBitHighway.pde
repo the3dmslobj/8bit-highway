@@ -1,3 +1,8 @@
+import javax.sound.sampled.AudioFormat;
+import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.DataLine;
+import javax.sound.sampled.SourceDataLine;
+
 final int SCREEN_W = 400;
 final int SCREEN_H = 600;
 final int ROAD_X = 70;
@@ -18,6 +23,7 @@ final int ENEMY_SPORTS = 2;
 final int ENEMY_VAN = 3;
 
 PlayerCar player;
+AudioEngine audio;
 ArrayList<EnemyCar> enemies = new ArrayList<EnemyCar>();
 ArrayList<Coin> coins = new ArrayList<Coin>();
 
@@ -34,6 +40,8 @@ void setup() {
   size(400, 600);
   noSmooth();
   textFont(createFont("Monospaced", 18));
+  audio = new AudioEngine();
+  audio.startMusic();
   resetRound();
 }
 
@@ -89,6 +97,8 @@ void updateEnemies() {
     } else if (rectsOverlap(player.x, player.y, player.w, player.h, enemy.x, enemy.y, enemy.w, enemy.h)) {
       gameState = STATE_GAME_OVER;
       bestScore = max(bestScore, score);
+      audio.setMusicActive(false);
+      audio.playCrash();
     }
   }
 }
@@ -103,6 +113,7 @@ void updateCoins() {
     } else if (rectsOverlap(player.x, player.y, player.w, player.h, coin.x, coin.y, coin.size, coin.size)) {
       score += 150;
       coins.remove(i);
+      audio.playCoin();
     }
   }
 }
@@ -163,6 +174,11 @@ void drawHud() {
   textAlign(RIGHT, TOP);
   text("BEST " + bestScore, width - 12, 11);
 
+  fill(220);
+  textAlign(CENTER, TOP);
+  textSize(12);
+  text(audioStatusText(), width / 2, 15);
+
   if (gameState == STATE_GAME_OVER) {
     fill(0, 190);
     rect(56, 216, 288, 132);
@@ -191,6 +207,8 @@ void drawScreenMessage() {
     text("CAR: " + playerStyleName(selectedPlayerStyle), width / 2, 292);
     text("PRESS 1-4 OR C TO CHANGE", width / 2, 320);
     text("PRESS SPACE TO START", width / 2, 360);
+    textSize(14);
+    text("M TO MUTE SOUND", width / 2, 386);
   } else if (gameState == STATE_PAUSED) {
     fill(0, 180);
     rect(86, 238, 228, 96);
@@ -213,6 +231,11 @@ boolean rectsOverlap(float ax, float ay, float aw, float ah, float bx, float by,
 }
 
 void keyPressed() {
+  if (key == 'm' || key == 'M') {
+    audio.toggleMute();
+    return;
+  }
+
   if (gameState == STATE_START) {
     if (key == ' ' || key == ENTER || key == RETURN) {
       resetGame();
@@ -228,22 +251,33 @@ void keyPressed() {
   } else if (gameState == STATE_PLAYING) {
     if (key == 'p' || key == 'P') {
       gameState = STATE_PAUSED;
+      audio.setMusicActive(false);
       return;
     }
     if (keyCode == LEFT || key == 'a' || key == 'A') {
+      int previousLane = player.lane;
       player.moveLeft();
+      if (player.lane != previousLane) {
+        audio.playMove();
+      }
     }
     if (keyCode == RIGHT || key == 'd' || key == 'D') {
+      int previousLane = player.lane;
       player.moveRight();
+      if (player.lane != previousLane) {
+        audio.playMove();
+      }
     }
   } else if (gameState == STATE_PAUSED && (key == 'p' || key == 'P')) {
     gameState = STATE_PLAYING;
+    audio.setMusicActive(true);
   }
 }
 
 void resetGame() {
   resetRound();
   gameState = STATE_PLAYING;
+  audio.setMusicActive(true);
 }
 
 void resetRound() {
@@ -261,9 +295,14 @@ void handleStyleSelection() {
   if (key == 'c' || key == 'C') {
     selectedPlayerStyle = (selectedPlayerStyle + 1) % PLAYER_STYLE_COUNT;
     player.style = selectedPlayerStyle;
+    audio.playSelect();
   } else if (key >= '1' && key <= '4') {
-    selectedPlayerStyle = key - '1';
-    player.style = selectedPlayerStyle;
+    int nextStyle = key - '1';
+    if (selectedPlayerStyle != nextStyle) {
+      selectedPlayerStyle = nextStyle;
+      player.style = selectedPlayerStyle;
+      audio.playSelect();
+    }
   }
 }
 
@@ -276,6 +315,13 @@ String playerStyleName(int style) {
     return "YELLOW MUSCLE";
   }
   return "RED CLASSIC";
+}
+
+String audioStatusText() {
+  if (!audio.available) {
+    return "NO AUDIO";
+  }
+  return audio.muted ? "M: MUTED" : "M: SOUND";
 }
 
 color playerStyleColor(int style) {
@@ -360,6 +406,173 @@ color enemyColor(int type) {
     color(36, 194, 153)
   };
   return compactColors[int(random(compactColors.length))];
+}
+
+class AudioEngine {
+  final float SAMPLE_RATE = 22050;
+  volatile boolean muted = false;
+  volatile boolean musicActive = false;
+  volatile boolean available = true;
+
+  int[] melody = {
+    220, 277, 330, 277, 392, 330, 277, 220,
+    247, 294, 370, 294, 440, 370, 294, 247
+  };
+  int[] melodyDurations = {
+    150, 150, 150, 150, 220, 120, 150, 220,
+    150, 150, 150, 150, 220, 120, 150, 220
+  };
+
+  void startMusic() {
+    Thread musicThread = new Thread(new Runnable() {
+      public void run() {
+        runMusicLoop();
+      }
+    });
+    musicThread.setDaemon(true);
+    musicThread.start();
+  }
+
+  void setMusicActive(boolean active) {
+    musicActive = active;
+  }
+
+  void toggleMute() {
+    muted = !muted;
+  }
+
+  void playMove() {
+    playSequence(new int[] { 220, 330 }, new int[] { 45, 55 }, 0.18);
+  }
+
+  void playCoin() {
+    playSequence(new int[] { 660, 880, 1320 }, new int[] { 55, 55, 85 }, 0.20);
+  }
+
+  void playCrash() {
+    if (!available || muted) {
+      return;
+    }
+
+    Thread effectThread = new Thread(new Runnable() {
+      public void run() {
+        playNoise(230, 0.34);
+        playTone(80, 170, 0.28);
+      }
+    });
+    effectThread.setDaemon(true);
+    effectThread.start();
+  }
+
+  void playSelect() {
+    playSequence(new int[] { 440, 660 }, new int[] { 50, 70 }, 0.14);
+  }
+
+  void runMusicLoop() {
+    while (true) {
+      if (!available || muted || !musicActive) {
+        sleepFor(80);
+        continue;
+      }
+
+      for (int i = 0; i < melody.length; i++) {
+        if (muted || !musicActive) {
+          break;
+        }
+        playTone(melody[i], melodyDurations[i], 0.09);
+        sleepFor(25);
+      }
+    }
+  }
+
+  void playSequence(final int[] notes, final int[] durations, final double volume) {
+    if (!available || muted) {
+      return;
+    }
+
+    Thread effectThread = new Thread(new Runnable() {
+      public void run() {
+        for (int i = 0; i < notes.length; i++) {
+          if (muted) {
+            return;
+          }
+          playTone(notes[i], durations[i], volume);
+        }
+      }
+    });
+    effectThread.setDaemon(true);
+    effectThread.start();
+  }
+
+  synchronized void playTone(int frequency, int durationMs, double volume) {
+    SourceDataLine line = null;
+
+    try {
+      AudioFormat format = new AudioFormat(SAMPLE_RATE, 8, 1, true, false);
+      DataLine.Info info = new DataLine.Info(SourceDataLine.class, format);
+      line = (SourceDataLine)AudioSystem.getLine(info);
+      line.open(format);
+      line.start();
+
+      int sampleCount = (int)(SAMPLE_RATE * durationMs / 1000.0);
+      byte[] samples = new byte[sampleCount];
+
+      for (int i = 0; i < sampleCount; i++) {
+        double progress = i / (double)sampleCount;
+        double wave = Math.sin(Math.PI * 2 * frequency * i / SAMPLE_RATE) >= 0 ? 1 : -1;
+        double envelope = Math.min(1, Math.min(progress * 18, (1 - progress) * 18));
+        samples[i] = (byte)(wave * 127 * volume * envelope);
+      }
+
+      line.write(samples, 0, samples.length);
+      line.drain();
+    } catch (Exception e) {
+      available = false;
+    } finally {
+      if (line != null) {
+        line.close();
+      }
+    }
+  }
+
+  synchronized void playNoise(int durationMs, double volume) {
+    SourceDataLine line = null;
+
+    try {
+      AudioFormat format = new AudioFormat(SAMPLE_RATE, 8, 1, true, false);
+      DataLine.Info info = new DataLine.Info(SourceDataLine.class, format);
+      line = (SourceDataLine)AudioSystem.getLine(info);
+      line.open(format);
+      line.start();
+
+      int sampleCount = (int)(SAMPLE_RATE * durationMs / 1000.0);
+      byte[] samples = new byte[sampleCount];
+
+      for (int i = 0; i < sampleCount; i++) {
+        double progress = i / (double)sampleCount;
+        double envelope = Math.min(1, Math.min(progress * 10, (1 - progress) * 6));
+        double wave = Math.random() * 2 - 1;
+        samples[i] = (byte)(wave * 127 * volume * envelope);
+      }
+
+      line.write(samples, 0, samples.length);
+      line.drain();
+    } catch (Exception e) {
+      available = false;
+    } finally {
+      if (line != null) {
+        line.close();
+      }
+    }
+  }
+
+  void sleepFor(int millis) {
+    try {
+      Thread.sleep(millis);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+    }
+  }
 }
 
 class PlayerCar {

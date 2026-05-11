@@ -10,6 +10,8 @@ The goal of the game is to avoid enemy cars, collect coins, and get the highest 
 
 The start screen also lets the player choose between four car styles before starting.
 
+The game also generates simple retro sounds in code. there is a background melody while playing, plus sound effects for moving lanes, collecting coins, choosing a car, and crashing.
+
 ## 2. how the game works
 
 The game has four main states:
@@ -37,6 +39,8 @@ if (gameState == STATE_PLAYING) {
   updateGame();
 }
 ```
+
+Sound can be muted or unmuted with the `m` key.
 
 ## 3. setup and draw
 
