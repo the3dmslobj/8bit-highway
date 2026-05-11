@@ -1,337 +1,165 @@
-# 8-bit highway video explanation
+# 8-Bit Highway video recording script
 
-This document explains the project in a simple order for a school video presentation.
+Use this as a guide while recording the screen. It is written like a normal explanation, not a formal class presentation. You do not need to read every line exactly. Speak naturally and use the "show on screen" notes to know what to demonstrate.
 
-## 1. project introduction
+## Before recording
 
-8-bit highway is a retro-style 2d car racing game made with processing.
+- Open the project in Processing.
+- Open `EightBitHighway/EightBitHighway.pde`.
+- Be ready to run the sketch.
+- If you want to show the audio code, also open `AudioEngine.java`.
 
-The goal of the game is to avoid enemy cars, collect coins, and get the highest score possible. the game uses a simple three-lane road system, so the player only moves left or right between lanes.
+## Short version
 
-The start screen also lets the player choose between four car styles before starting.
+### 1. Start the video
 
-The game also generates simple retro sounds in code. there is a subtle background melody while playing, plus sound effects for moving lanes, collecting coins, choosing a car, and crashing.
+Show the Processing window with the project open.
 
-## 2. how the game works
+Say:
 
-The game has four main states:
+> This is our project, 8-Bit Highway. It is a retro-style car game made in Processing. The idea is simple: the player drives on a three-lane road, avoids enemy cars, collects coins, and tries to get the highest score.
 
-- start screen
-- playing
-- paused
-- game over
+### 2. Run the game
 
-The variable `gameState` stores the current state.
+Click Run and show the start screen.
 
-```java
-final int STATE_START = 0;
-final int STATE_PLAYING = 1;
-final int STATE_PAUSED = 2;
-final int STATE_GAME_OVER = 3;
-```
+Say:
 
-This makes the code easier to understand because the game can decide what to do based on the current state.
+> When the game starts, it shows the title screen. From here, the player can choose different car styles using the number keys or the C key. The game also shows the basic controls, so the player knows how to start and how to change lanes.
 
-For example, the game only updates movement, enemies, coins, and score when the state is `STATE_PLAYING`.
+Press `C` or `1` to `4` a few times.
 
-```java
-if (gameState == STATE_PLAYING) {
-  updateGame();
-}
-```
+Say:
 
-Sound can be muted or unmuted with the `m` key.
+> We added four player car styles, so the game feels a bit more personal instead of always using the same car.
 
-## 3. setup and draw
+### 3. Show gameplay
 
-Processing starts with two important functions:
+Press Space to start. Move left and right.
 
-- `setup()`
-- `draw()`
+Say:
 
-`setup()` runs once when the game starts. in this project it sets the window size, turns off smoothing for a pixel-art look, sets the font, starts the generated audio engine, and prepares the first round.
+> The player does not move freely like a mouse cursor. Instead, the road is split into three lanes. Pressing left or right moves the car one lane at a time. This keeps the controls simple and makes the game feel like an old arcade game.
 
-```java
-void setup() {
-  size(400, 600);
-  noSmooth();
-  textFont(createFont("Monospaced", 18));
-  audio = new AudioEngine();
-  audio.startMusic();
-  resetRound();
-}
-```
+Collect a coin if possible.
 
-`draw()` runs again and again every frame. it draws the road, objects, player car, score, and screen messages.
+Say:
 
-```java
-void draw() {
-  background(21, 120, 54);
-  drawRoad();
-  drawRoadside();
+> Coins appear randomly in lanes. When the player collects one, the score gets a bonus. The normal score also increases while the game is running, so surviving longer is important too.
 
-  if (gameState == STATE_PLAYING) {
-    updateGame();
-  }
+Avoid some cars, then crash into one.
 
-  for (EnemyCar enemy : enemies) {
-    enemy.draw();
-  }
-  for (Coin coin : coins) {
-    coin.draw();
-  }
-  player.draw();
-  drawHud();
-  drawScreenMessage();
-}
-```
+Say:
 
-## 4. road and movement
+> Enemy cars spawn at the top and move down the screen. There are different types, like compact cars, trucks, sports cars, and vans. They have different sizes and small speed differences, so the road does not feel exactly the same every time.
 
-The road is drawn with rectangles. the road has three lanes.
+After crashing:
 
-```java
-final int ROAD_X = 70;
-final int ROAD_W = 260;
-final int LANE_COUNT = 3;
-```
+> When the player hits an enemy car, the game changes to the game over screen. It saves the best score for the current session, and the player can restart with R.
 
-The lane position is calculated using the `laneCenter()` function.
+### 4. Explain the main code idea
 
-```java
-float laneCenter(int lane) {
-  return ROAD_X + ROAD_W / LANE_COUNT * lane + ROAD_W / LANE_COUNT / 2.0;
-}
-```
+Show the top of `EightBitHighway.pde`, especially the constants and variables.
 
-The player does not move freely across the road. instead, the player has a lane number.
+Say:
 
-- lane `0` is the left lane
-- lane `1` is the middle lane
-- lane `2` is the right lane
+> The project uses a few main game states: start, playing, paused, and game over. The variable `gameState` controls which mode the game is in. That way, the game only updates movement, enemies, coins, and score while it is actually playing.
 
-When the player presses left, the lane number decreases. when the player presses right, the lane number increases.
+Show `setup()` and `draw()`.
 
-```java
-void moveLeft() {
-  lane = max(0, lane - 1);
-}
+Say:
 
-void moveRight() {
-  lane = min(LANE_COUNT - 1, lane + 1);
-}
-```
+> Like most Processing projects, the main structure is `setup()` and `draw()`. `setup()` runs once at the beginning. It sets the window size, font, pixel-art style, audio, and resets the first round. `draw()` runs every frame. It draws the road, cars, coins, score, and screen messages.
 
-`max()` and `min()` stop the player from moving outside the road.
+Show `updateGame()`.
 
-## 5. player car
+Say:
 
-The player car is stored in the `PlayerCar` class.
+> The `updateGame()` function is where most of the active gameplay happens. It increases the score, increases speed over time, moves the road lines, updates the player, updates enemies and coins, and spawns new objects when their timers reach zero.
 
-Important variables:
+### 5. Explain movement
 
-- `x` and `y` store the car position
-- `w` and `h` store the car size
-- `lane` stores the current lane
-- `style` stores which player car design is selected
-- `targetX` stores where the car should move
+Show `laneCenter()` and the `PlayerCar` class.
 
-```java
-class PlayerCar {
-  float x;
-  float y;
-  float w = 30;
-  float h = 50;
-  int lane = 1;
-  int style = selectedPlayerStyle;
-  float targetX;
-}
-```
+Say:
 
-The player car smoothly moves toward the selected lane.
+> The road has three lanes. The function `laneCenter()` calculates the center of each lane. The player car stores its current lane as a number, so lane 0 is left, lane 1 is middle, and lane 2 is right.
 
-```java
-targetX = laneCenter(lane) - w / 2;
-x += (targetX - x) * 0.35;
-```
+Show `PlayerCar.update()`.
 
-This makes the movement look smoother than instantly jumping to the lane.
+Say:
 
-## 6. enemy cars
+> The car moves smoothly toward the target lane instead of instantly jumping there. This line moves the car part of the distance toward the target each frame, which makes the movement look better.
 
-Enemy cars are stored in an `ArrayList`.
+### 6. Explain enemies and coins
 
-```java
-ArrayList<EnemyCar> enemies = new ArrayList<EnemyCar>();
-```
+Show `ArrayList<EnemyCar>` and `ArrayList<Coin>`.
 
-An `ArrayList` is useful because the game can add new enemy cars and remove old ones while the game is running.
+Say:
 
-Enemy cars spawn at the top of the screen and move downward.
+> Enemies and coins are stored in ArrayLists. This is useful because the game needs to add new enemies and coins while it is running, and remove them after they go off screen or get collected.
 
-```java
-void update() {
-  y += max(2.6, speed + enemySpeedBoost(type));
-}
-```
+Show `spawnEnemy()` and `spawnCoin()`.
 
-The game has different enemy vehicle types. compact cars, trucks, sports cars, and vans have different sizes and small speed differences. this makes the road feel less repetitive and changes how much space each enemy takes up.
+Say:
 
-When an enemy car moves past the bottom of the screen, it is removed.
+> New enemies and coins spawn in random lanes. The enemy type is also random, so sometimes it is a truck, sometimes a sports car, and sometimes another type.
 
-```java
-if (enemy.y > height + 70) {
-  enemies.remove(i);
-}
-```
+Show `rectsOverlap()`.
 
-## 7. coins
+Say:
 
-Coins work in a similar way to enemy cars.
+> For collisions, the game uses rectangle collision detection. It checks if the rectangle around the player overlaps the rectangle around an enemy or coin. If it overlaps an enemy, the game ends. If it overlaps a coin, the score increases.
 
-They are stored in another `ArrayList`.
+### 7. Explain audio
 
-```java
-ArrayList<Coin> coins = new ArrayList<Coin>();
-```
+Show `AudioEngine.java`.
 
-Coins spawn in random lanes and move downward.
+Say:
 
-```java
-void spawnCoin() {
-  int lane = int(random(LANE_COUNT));
-  coins.add(new Coin(laneCenter(lane) - 10, -30));
-}
-```
+> The sound is generated in code instead of using audio files. The audio engine creates simple square-wave sounds for the retro style. There is background music while playing, plus effects for moving, collecting coins, choosing a car, and crashing. The M key can mute or unmute the sound.
 
-If the player touches a coin, the score increases by 150 points.
+### 8. Show pause and restart
 
-```java
-score += 150;
-coins.remove(i);
-```
+Run the game again if needed. Press `P`, then `P` again. Press `M` if you want to show mute.
 
-## 8. score and difficulty
+Say:
 
-The score increases every frame while the game is playing.
+> We also added pause and mute controls. Pause stops the active gameplay and music until the player resumes. Mute turns off the generated sounds.
 
-```java
-score++;
-```
+### 9. End the video
 
-The speed also increases as the score gets higher.
+Show the game running or the game over screen.
 
-```java
-speed = 5 + score / 900.0;
-```
+Say:
 
-This means the game slowly becomes harder over time.
+> Overall, this project combines drawing, keyboard input, classes, ArrayLists, collision detection, scoring, game states, and generated audio. The final result is a complete small arcade game made in Processing.
 
-## 9. collision detection
+## Even shorter 1-minute script
 
-The game uses rectangle collision detection.
+> This is 8-Bit Highway, a retro-style car game made in Processing. The player drives on a three-lane road, avoids enemy cars, collects coins, and tries to get the highest score.
+>
+> On the start screen, the player can choose between four car styles. The controls are simple: left and right change lanes, space starts the game, P pauses, M mutes sound, and R restarts after game over.
+>
+> The main code uses game states for start, playing, paused, and game over. The game only updates the score, speed, enemies, coins, and collisions while it is in the playing state.
+>
+> The player car is stored in a class, and it moves smoothly toward the center of the selected lane. Enemy cars and coins are stored in ArrayLists because they are created and removed while the game is running.
+>
+> Collision detection uses rectangles. If the player touches a coin, the score increases by 150. If the player hits an enemy car, the game ends and the best score is updated.
+>
+> We also added generated retro audio in Java, so the game has background music and sound effects without needing separate sound files.
+>
+> So the project shows Processing drawing, keyboard input, classes, ArrayLists, collision detection, score tracking, difficulty increase, and audio.
 
-This function checks if two rectangles are touching.
+## Natural phrases you can use
 
-```java
-boolean rectsOverlap(float ax, float ay, float aw, float ah, float bx, float by, float bw, float bh) {
-  return ax < bx + bw && ax + aw > bx && ay < by + bh && ay + ah > by;
-}
-```
+- "Here I am showing the start screen."
+- "Now I am choosing a different car style."
+- "The road is divided into three lanes."
+- "The enemies are generated randomly, so each run is a little different."
+- "The score increases over time, and coins add bonus points."
+- "This part of the code controls the game state."
+- "This class stores the player car information."
+- "This ArrayList lets the game keep many enemies at once."
+- "This function checks if two rectangles are touching."
 
-The same function is used for enemy cars and coins.
-
-If the player hits an enemy car, the game changes to game over.
-
-```java
-gameState = STATE_GAME_OVER;
-bestScore = max(bestScore, score);
-```
-
-If the player touches a coin, the player gets bonus points instead.
-
-## 10. keyboard controls
-
-Keyboard input is handled by the `keyPressed()` function.
-
-Controls:
-
-- `space` or `enter` starts the game
-- `left arrow` or `a` moves left
-- `right arrow` or `d` moves right
-- `p` pauses and resumes
-- `r` restarts after game over
-
-The pause feature works by changing the game state.
-
-```java
-if (key == 'p' || key == 'P') {
-  gameState = STATE_PAUSED;
-  return;
-}
-```
-
-When the game is paused, pressing `p` again changes the state back to playing.
-
-```java
-gameState = STATE_PLAYING;
-```
-
-## 11. drawing the cars
-
-The game does not use image files for the cars. instead, the cars are drawn using rectangles.
-
-This keeps the project simple and easy to explain.
-
-```java
-void drawPixelCar(float x, float y, color bodyColor, boolean playerCar) {
-  fill(bodyColor);
-  rect(x, y + 6, 30, 38);
-  rect(x + 5, y, 20, 50);
-}
-```
-
-Using `noSmooth()` and rectangle shapes helps create the 8-bit style.
-
-## 12. suggested video order
-
-Use this order when explaining the project in a video:
-
-1. show the game running
-2. explain the goal of the game
-3. show the controls
-4. explain `setup()` and `draw()`
-5. explain `gameState`
-6. explain lane movement
-7. explain enemy cars
-8. explain coins and score
-9. explain collision detection
-10. explain pause, restart, and game over
-
-## 13. short speaking script
-
-Here is a simple script you can use or modify:
-
-Hello, this is my processing project called 8-bit highway. it is a 2d retro car racing game. the player controls a car on a three-lane road. the goal is to avoid enemy cars, collect coins, and get the highest score.
-
-The game uses different states, such as start, playing, paused, and game over. this is controlled by the `gameState` variable. when the game is playing, the program updates the player, enemies, coins, score, and road movement. when the game is paused, the game still draws the screen but does not update the gameplay.
-
-The player movement is lane-based. the player has a lane number, and pressing left or right changes the lane. the car then moves smoothly toward the center of that lane.
-
-Enemy cars and coins are stored in arraylists. this allows the game to create new objects while the game is running and remove them when they go off screen or are collected. the enemy cars have multiple types, including compact cars, trucks, sports cars, and vans.
-
-Collision detection uses rectangles. if the player rectangle overlaps with an enemy car rectangle, the game is over. if the player overlaps with a coin rectangle, the score increases by 150 points.
-
-The score increases over time, and the speed also increases as the score gets higher. this makes the game more difficult the longer the player survives.
-
-The graphics are drawn with simple rectangles instead of image files. this makes the project easier to understand and gives it a simple 8-bit style.
-
-The audio is also generated in code instead of using sound files. the background music is kept quiet so it does not distract from the sound effects.
-
-## 14. possible future improvements
-
-If more time is available, the game could be improved with:
-
-- saved high score
-- custom pixel-art sprites
-- power-ups
