@@ -146,11 +146,18 @@ boolean rectsOverlap(float ax, float ay, float aw, float ah, float bx, float by,
 void keyPressed() {
   if ((key == 'r' || key == 'R') && gameOver) {
     resetGame();
+  } else if (!gameOver) {
+    if (keyCode == LEFT || key == 'a' || key == 'A') {
+      player.moveLeft();
+    }
+    if (keyCode == RIGHT || key == 'd' || key == 'D') {
+      player.moveRight();
+    }
   }
 }
 
 void resetGame() {
-  player = new PlayerCar(laneCenter(1) - 15, height - 92);
+  player = new PlayerCar(1, height - 92);
   enemies.clear();
   roadOffset = 0;
   speed = 5;
@@ -164,23 +171,27 @@ class PlayerCar {
   float y;
   float w = 30;
   float h = 50;
+  int lane = 1;
+  float targetX;
 
-  PlayerCar(float startX, float startY) {
-    x = startX;
+  PlayerCar(int startLane, float startY) {
+    lane = startLane;
+    targetX = laneCenter(lane) - w / 2;
+    x = targetX;
     y = startY;
   }
 
   void update() {
-    if (keyPressed) {
-      if (keyCode == LEFT || key == 'a' || key == 'A') {
-        x -= 6;
-      }
-      if (keyCode == RIGHT || key == 'd' || key == 'D') {
-        x += 6;
-      }
-    }
+    targetX = laneCenter(lane) - w / 2;
+    x += (targetX - x) * 0.35;
+  }
 
-    x = constrain(x, ROAD_X + 14, ROAD_X + ROAD_W - w - 14);
+  void moveLeft() {
+    lane = max(0, lane - 1);
+  }
+
+  void moveRight() {
+    lane = min(LANE_COUNT - 1, lane + 1);
   }
 
   void draw() {
