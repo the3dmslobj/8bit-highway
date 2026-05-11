@@ -10,7 +10,7 @@ The goal of the game is to avoid enemy cars, collect coins, and get the highest 
 
 The start screen also lets the player choose between four car styles before starting.
 
-The game also generates simple retro sounds in code. there is a background melody while playing, plus sound effects for moving lanes, collecting coins, choosing a car, and crashing.
+The game also generates simple retro sounds in code. there is a subtle background melody while playing, plus sound effects for moving lanes, collecting coins, choosing a car, and crashing.
 
 ## 2. how the game works
 
@@ -49,13 +49,15 @@ Processing starts with two important functions:
 - `setup()`
 - `draw()`
 
-`setup()` runs once when the game starts. in this project it sets the window size, turns off smoothing for a pixel-art look, sets the font, and prepares the first round.
+`setup()` runs once when the game starts. in this project it sets the window size, turns off smoothing for a pixel-art look, sets the font, starts the generated audio engine, and prepares the first round.
 
 ```java
 void setup() {
   size(400, 600);
   noSmooth();
   textFont(createFont("Monospaced", 18));
+  audio = new AudioEngine();
+  audio.startMusic();
   resetRound();
 }
 ```
@@ -316,7 +318,7 @@ The game uses different states, such as start, playing, paused, and game over. t
 
 The player movement is lane-based. the player has a lane number, and pressing left or right changes the lane. the car then moves smoothly toward the center of that lane.
 
-Enemy cars and coins are stored in arraylists. this allows the game to create new objects while the game is running and remove them when they go off screen or are collected.
+Enemy cars and coins are stored in arraylists. this allows the game to create new objects while the game is running and remove them when they go off screen or are collected. the enemy cars have multiple types, including compact cars, trucks, sports cars, and vans.
 
 Collision detection uses rectangles. if the player rectangle overlaps with an enemy car rectangle, the game is over. if the player overlaps with a coin rectangle, the score increases by 150 points.
 
@@ -324,13 +326,12 @@ The score increases over time, and the speed also increases as the score gets hi
 
 The graphics are drawn with simple rectangles instead of image files. this makes the project easier to understand and gives it a simple 8-bit style.
 
+The audio is also generated in code instead of using sound files. the background music is kept quiet so it does not distract from the sound effects.
+
 ## 14. possible future improvements
 
 If more time is available, the game could be improved with:
 
-- sound effects
-- more enemy car types
 - saved high score
 - custom pixel-art sprites
-- background music
 - power-ups

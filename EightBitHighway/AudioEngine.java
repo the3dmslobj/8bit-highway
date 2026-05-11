@@ -5,9 +5,12 @@ import javax.sound.sampled.SourceDataLine;
 
 class AudioEngine {
   final float SAMPLE_RATE = 22050;
+  final int BUFFER_SIZE = 256;
+
   volatile boolean muted = false;
   volatile boolean musicActive = false;
   volatile boolean available = true;
+  volatile SoundSequence effect = null;
 
   int[] melody = {
     220, 277, 330, 277, 392, 330, 277, 220,
@@ -17,155 +20,215 @@ class AudioEngine {
     150, 150, 150, 150, 220, 120, 150, 220,
     150, 150, 150, 150, 220, 120, 150, 220
   };
+  boolean musicRest = false;
+
+  int musicIndex = 0;
+  int musicSamplesLeft = 0;
+  int musicSamplesTotal = 1;
+  double musicPhase = 0;
 
   void startMusic() {
-    Thread musicThread = new Thread(new Runnable() {
+    Thread audioThread = new Thread(new Runnable() {
       public void run() {
-        runMusicLoop();
+        runAudioLoop();
       }
     });
-    musicThread.setDaemon(true);
-    musicThread.start();
+    audioThread.setDaemon(true);
+    audioThread.start();
   }
 
   void setMusicActive(boolean active) {
     musicActive = active;
+    if (!active) {
+      musicSamplesLeft = 0;
+      musicPhase = 0;
+    }
   }
 
   void toggleMute() {
     muted = !muted;
+    if (muted) {
+      effect = null;
+    }
   }
 
   void playMove() {
-    playSequence(new int[] { 220, 330 }, new int[] { 45, 55 }, 0.18);
+    triggerEffect(new int[] { 220, 330 }, new int[] { 45, 55 }, 0.18, false);
   }
 
   void playCoin() {
-    playSequence(new int[] { 660, 880, 1320 }, new int[] { 55, 55, 85 }, 0.20);
+    triggerEffect(new int[] { 660, 880, 1320 }, new int[] { 55, 55, 85 }, 0.20, false);
   }
 
   void playCrash() {
-    if (!available || muted) {
-      return;
-    }
-
-    Thread effectThread = new Thread(new Runnable() {
-      public void run() {
-        playNoise(230, 0.34);
-        playTone(80, 170, 0.28);
-      }
-    });
-    effectThread.setDaemon(true);
-    effectThread.start();
+    triggerEffect(new int[] { 120, 85 }, new int[] { 190, 170 }, 0.34, true);
   }
 
   void playSelect() {
-    playSequence(new int[] { 440, 660 }, new int[] { 50, 70 }, 0.14);
+    triggerEffect(new int[] { 440, 660 }, new int[] { 50, 70 }, 0.14, false);
   }
 
-  void runMusicLoop() {
-    while (true) {
-      if (!available || muted || !musicActive) {
-        sleepFor(80);
-        continue;
-      }
-
-      for (int i = 0; i < melody.length; i++) {
-        if (muted || !musicActive) {
-          break;
-        }
-        playTone(melody[i], melodyDurations[i], 0.09);
-        sleepFor(25);
-      }
-    }
-  }
-
-  void playSequence(final int[] notes, final int[] durations, final double volume) {
+  void triggerEffect(int[] notes, int[] durations, double volume, boolean noise) {
     if (!available || muted) {
       return;
     }
+    effect = new SoundSequence(notes, durations, volume, noise);
+  }
 
-    Thread effectThread = new Thread(new Runnable() {
-      public void run() {
-        for (int i = 0; i < notes.length; i++) {
-          if (muted) {
-            return;
-          }
-          playTone(notes[i], durations[i], volume);
+  void runAudioLoop() {
+    SourceDataLine audioLine = null;
+
+    try {
+      AudioFormat format = new AudioFormat(SAMPLE_RATE, 8, 1, true, false);
+      DataLine.Info info = new DataLine.Info(SourceDataLine.class, format);
+      audioLine = (SourceDataLine)AudioSystem.getLine(info);
+      audioLine.open(format, BUFFER_SIZE * 4);
+      audioLine.start();
+
+      byte[] buffer = new byte[BUFFER_SIZE];
+      while (true) {
+        fillBuffer(buffer);
+        audioLine.write(buffer, 0, buffer.length);
+      }
+    } catch (Exception e) {
+      available = false;
+    } finally {
+      if (audioLine != null) {
+        audioLine.close();
+      }
+    }
+  }
+
+  void fillBuffer(byte[] buffer) {
+    for (int i = 0; i < buffer.length; i++) {
+      double mixed = 0;
+
+      if (!muted) {
+        mixed += nextMusicSample();
+        mixed += nextEffectSample();
+      }
+
+      mixed = Math.max(-1, Math.min(1, mixed));
+      buffer[i] = (byte)(mixed * 127);
+    }
+  }
+
+  double nextMusicSample() {
+    if (!musicActive) {
+      return 0;
+    }
+
+    if (musicSamplesLeft <= 0) {
+      musicRest = !musicRest;
+      musicSamplesTotal = samplesFromMillis(musicRest ? 70 : melodyDurations[musicIndex]);
+      musicSamplesLeft = musicSamplesTotal;
+      if (!musicRest) {
+        musicIndex = (musicIndex + 1) % melody.length;
+      }
+    }
+
+    if (musicRest) {
+      musicSamplesLeft--;
+      return 0;
+    }
+
+    int noteIndex = (musicIndex + melody.length - 1) % melody.length;
+    int frequency = melody[noteIndex];
+    double progress = 1 - musicSamplesLeft / (double)musicSamplesTotal;
+    double envelope = Math.min(1, Math.min(progress * 16, (1 - progress) * 16));
+    double sample = squareWave(musicPhase) * 0.035 * envelope;
+
+    musicPhase = advancePhase(musicPhase, frequency);
+    musicSamplesLeft--;
+    return sample;
+  }
+
+  double nextEffectSample() {
+    SoundSequence current = effect;
+    if (current == null) {
+      return 0;
+    }
+
+    double sample = current.nextSample();
+    if (current.done) {
+      effect = null;
+    }
+    return sample;
+  }
+
+  int samplesFromMillis(int millis) {
+    return Math.max(1, (int)(SAMPLE_RATE * millis / 1000.0));
+  }
+
+  double squareWave(double phase) {
+    return phase < 0.5 ? 1 : -1;
+  }
+
+  double advancePhase(double phase, int frequency) {
+    phase += frequency / (double)SAMPLE_RATE;
+    while (phase >= 1) {
+      phase -= 1;
+    }
+    return phase;
+  }
+
+  class SoundSequence {
+    int[] notes;
+    int[] durations;
+    double volume;
+    boolean noise;
+    boolean done = false;
+
+    int index = -1;
+    int samplesLeft = 0;
+    int samplesTotal = 1;
+    double phase = 0;
+
+    SoundSequence(int[] startNotes, int[] startDurations, double startVolume, boolean startNoise) {
+      notes = startNotes;
+      durations = startDurations;
+      volume = startVolume;
+      noise = startNoise;
+      advanceNote();
+    }
+
+    double nextSample() {
+      if (done) {
+        return 0;
+      }
+
+      if (samplesLeft <= 0) {
+        advanceNote();
+        if (done) {
+          return 0;
         }
       }
-    });
-    effectThread.setDaemon(true);
-    effectThread.start();
-  }
 
-  synchronized void playTone(int frequency, int durationMs, double volume) {
-    SourceDataLine audioLine = null;
+      double progress = 1 - samplesLeft / (double)samplesTotal;
+      double envelope = Math.min(1, Math.min(progress * 18, (1 - progress) * 12));
+      double sample;
 
-    try {
-      AudioFormat format = new AudioFormat(SAMPLE_RATE, 8, 1, true, false);
-      DataLine.Info info = new DataLine.Info(SourceDataLine.class, format);
-      audioLine = (SourceDataLine)AudioSystem.getLine(info);
-      audioLine.open(format);
-      audioLine.start();
-
-      int sampleCount = (int)(SAMPLE_RATE * durationMs / 1000.0);
-      byte[] samples = new byte[sampleCount];
-
-      for (int i = 0; i < sampleCount; i++) {
-        double progress = i / (double)sampleCount;
-        double wave = Math.sin(Math.PI * 2 * frequency * i / SAMPLE_RATE) >= 0 ? 1 : -1;
-        double envelope = Math.min(1, Math.min(progress * 18, (1 - progress) * 18));
-        samples[i] = (byte)(wave * 127 * volume * envelope);
+      if (noise) {
+        sample = (Math.random() * 2 - 1) * volume * envelope;
+      } else {
+        sample = squareWave(phase) * volume * envelope;
+        phase = advancePhase(phase, notes[index]);
       }
 
-      audioLine.write(samples, 0, samples.length);
-      audioLine.drain();
-    } catch (Exception e) {
-      available = false;
-    } finally {
-      if (audioLine != null) {
-        audioLine.close();
-      }
+      samplesLeft--;
+      return sample;
     }
-  }
 
-  synchronized void playNoise(int durationMs, double volume) {
-    SourceDataLine audioLine = null;
-
-    try {
-      AudioFormat format = new AudioFormat(SAMPLE_RATE, 8, 1, true, false);
-      DataLine.Info info = new DataLine.Info(SourceDataLine.class, format);
-      audioLine = (SourceDataLine)AudioSystem.getLine(info);
-      audioLine.open(format);
-      audioLine.start();
-
-      int sampleCount = (int)(SAMPLE_RATE * durationMs / 1000.0);
-      byte[] samples = new byte[sampleCount];
-
-      for (int i = 0; i < sampleCount; i++) {
-        double progress = i / (double)sampleCount;
-        double envelope = Math.min(1, Math.min(progress * 10, (1 - progress) * 6));
-        double wave = Math.random() * 2 - 1;
-        samples[i] = (byte)(wave * 127 * volume * envelope);
+    void advanceNote() {
+      index++;
+      if (index >= notes.length) {
+        done = true;
+        return;
       }
 
-      audioLine.write(samples, 0, samples.length);
-      audioLine.drain();
-    } catch (Exception e) {
-      available = false;
-    } finally {
-      if (audioLine != null) {
-        audioLine.close();
-      }
-    }
-  }
-
-  void sleepFor(int millis) {
-    try {
-      Thread.sleep(millis);
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
+      samplesTotal = samplesFromMillis(durations[index]);
+      samplesLeft = samplesTotal;
+      phase = 0;
     }
   }
 }

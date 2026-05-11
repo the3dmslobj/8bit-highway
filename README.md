@@ -8,10 +8,9 @@ The player drives on a three-lane highway, avoids enemy cars, collects coins, an
 
 - Three-lane player movement
 - Moving road and lane lines
-- Enemy cars that move down the road
-- Multiple enemy vehicle types, including compact cars, trucks, sports cars, and vans
+- Multiple enemy vehicle types that move down the road, including compact cars, trucks, sports cars, and vans
 - Four selectable player car styles
-- Generated retro sound effects and background music
+- Generated retro sound effects and subtle background music
 - Collectible coins that add bonus points
 - Collision detection
 - Score and best score
@@ -48,6 +47,6 @@ The player drives on a three-lane highway, avoids enemy cars, collects coins, an
 
 - `gameState` controls whether the game is starting, playing, paused, or over.
 - `PlayerCar` stores the player's lane and position.
-- `EnemyCar` stores each obstacle car.
+- `EnemyCar` stores each obstacle car, including its vehicle type, size, color, and speed difference.
 - `Coin` stores each collectible coin.
 - `ArrayList` is used so the game can add and remove enemies and coins while running.
