@@ -3,6 +3,10 @@ final int SCREEN_H = 600;
 final int ROAD_X = 70;
 final int ROAD_W = 260;
 final int LANE_COUNT = 3;
+final int STATE_START = 0;
+final int STATE_PLAYING = 1;
+final int STATE_PAUSED = 2;
+final int STATE_GAME_OVER = 3;
 
 PlayerCar player;
 ArrayList<EnemyCar> enemies = new ArrayList<EnemyCar>();
@@ -14,13 +18,13 @@ int score = 0;
 int bestScore = 0;
 int spawnTimer = 0;
 int coinTimer = 0;
-boolean gameOver = false;
+int gameState = STATE_START;
 
 void setup() {
   size(400, 600);
   noSmooth();
   textFont(createFont("Monospaced", 18));
-  resetGame();
+  resetRound();
 }
 
 void draw() {
@@ -28,7 +32,7 @@ void draw() {
   drawRoad();
   drawRoadside();
 
-  if (!gameOver) {
+  if (gameState == STATE_PLAYING) {
     updateGame();
   }
 
@@ -40,6 +44,7 @@ void draw() {
   }
   player.draw();
   drawHud();
+  drawScreenMessage();
 }
 
 void updateGame() {
@@ -72,7 +77,7 @@ void updateEnemies() {
     if (enemy.y > height + 70) {
       enemies.remove(i);
     } else if (rectsOverlap(player.x, player.y, player.w, player.h, enemy.x, enemy.y, enemy.w, enemy.h)) {
-      gameOver = true;
+      gameState = STATE_GAME_OVER;
       bestScore = max(bestScore, score);
     }
   }
@@ -153,7 +158,7 @@ void drawHud() {
   textAlign(RIGHT, TOP);
   text("BEST " + bestScore, width - 12, 11);
 
-  if (gameOver) {
+  if (gameState == STATE_GAME_OVER) {
     fill(0, 190);
     rect(56, 216, 288, 132);
 
@@ -166,6 +171,31 @@ void drawHud() {
   }
 }
 
+void drawScreenMessage() {
+  if (gameState == STATE_START) {
+    fill(0, 190);
+    rect(42, 190, 316, 170);
+
+    fill(255);
+    textAlign(CENTER, CENTER);
+    textSize(30);
+    text("8-BIT HIGHWAY", width / 2, 234);
+    textSize(16);
+    text("LEFT / RIGHT TO CHANGE LANES", width / 2, 282);
+    text("PRESS SPACE TO START", width / 2, 316);
+  } else if (gameState == STATE_PAUSED) {
+    fill(0, 180);
+    rect(86, 238, 228, 96);
+
+    fill(255);
+    textAlign(CENTER, CENTER);
+    textSize(30);
+    text("PAUSED", width / 2, 274);
+    textSize(16);
+    text("PRESS P TO RESUME", width / 2, 308);
+  }
+}
+
 float laneCenter(int lane) {
   return ROAD_X + ROAD_W / LANE_COUNT * lane + ROAD_W / LANE_COUNT / 2.0;
 }
@@ -175,19 +205,32 @@ boolean rectsOverlap(float ax, float ay, float aw, float ah, float bx, float by,
 }
 
 void keyPressed() {
-  if ((key == 'r' || key == 'R') && gameOver) {
+  if (gameState == STATE_START && (key == ' ' || key == ENTER || key == RETURN)) {
     resetGame();
-  } else if (!gameOver) {
+  } else if (gameState == STATE_GAME_OVER && (key == 'r' || key == 'R')) {
+    resetGame();
+  } else if (gameState == STATE_PLAYING) {
+    if (key == 'p' || key == 'P') {
+      gameState = STATE_PAUSED;
+      return;
+    }
     if (keyCode == LEFT || key == 'a' || key == 'A') {
       player.moveLeft();
     }
     if (keyCode == RIGHT || key == 'd' || key == 'D') {
       player.moveRight();
     }
+  } else if (gameState == STATE_PAUSED && (key == 'p' || key == 'P')) {
+    gameState = STATE_PLAYING;
   }
 }
 
 void resetGame() {
+  resetRound();
+  gameState = STATE_PLAYING;
+}
+
+void resetRound() {
   player = new PlayerCar(1, height - 92);
   enemies.clear();
   coins.clear();
@@ -196,7 +239,6 @@ void resetGame() {
   score = 0;
   spawnTimer = 40;
   coinTimer = 90;
-  gameOver = false;
 }
 
 class PlayerCar {
