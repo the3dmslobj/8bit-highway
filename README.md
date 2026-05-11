@@ -9,6 +9,8 @@ The player drives on a three-lane highway, avoids enemy cars, collects coins, an
 - Three-lane player movement
 - Moving road and lane lines
 - Enemy cars that move down the road
+- Multiple enemy vehicle types, including compact cars, trucks, sports cars, and vans
+- Four selectable player car styles
 - Collectible coins that add bonus points
 - Collision detection
 - Score and best score
@@ -22,6 +24,8 @@ The player drives on a three-lane highway, avoids enemy cars, collects coins, an
 
 - `left arrow` or `a`: move one lane left
 - `right arrow` or `d`: move one lane right
+- `1`-`4`: choose a player car style on the start or game over screen
+- `c`: cycle player car styles on the start or game over screen
 - `space` or `enter`: start the game
 - `p`: pause or resume
 - `r`: restart after game over

@@ -8,6 +8,8 @@ This document explains the project in a simple order for a school video presenta
 
 The goal of the game is to avoid enemy cars, collect coins, and get the highest score possible. the game uses a simple three-lane road system, so the player only moves left or right between lanes.
 
+The start screen also lets the player choose between four car styles before starting.
+
 ## 2. how the game works
 
 The game has four main states:
@@ -125,6 +127,7 @@ Important variables:
 - `x` and `y` store the car position
 - `w` and `h` store the car size
 - `lane` stores the current lane
+- `style` stores which player car design is selected
 - `targetX` stores where the car should move
 
 ```java
@@ -134,6 +137,7 @@ class PlayerCar {
   float w = 30;
   float h = 50;
   int lane = 1;
+  int style = selectedPlayerStyle;
   float targetX;
 }
 ```
@@ -161,9 +165,11 @@ Enemy cars spawn at the top of the screen and move downward.
 
 ```java
 void update() {
-  y += speed;
+  y += max(2.6, speed + enemySpeedBoost(type));
 }
 ```
+
+The game has different enemy vehicle types. compact cars, trucks, sports cars, and vans have different sizes and small speed differences. this makes the road feel less repetitive and changes how much space each enemy takes up.
 
 When an enemy car moves past the bottom of the screen, it is removed.
 

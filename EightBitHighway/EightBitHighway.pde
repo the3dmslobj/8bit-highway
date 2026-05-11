@@ -7,6 +7,15 @@ final int STATE_START = 0;
 final int STATE_PLAYING = 1;
 final int STATE_PAUSED = 2;
 final int STATE_GAME_OVER = 3;
+final int PLAYER_STYLE_RED = 0;
+final int PLAYER_STYLE_BLUE = 1;
+final int PLAYER_STYLE_GREEN = 2;
+final int PLAYER_STYLE_YELLOW = 3;
+final int PLAYER_STYLE_COUNT = 4;
+final int ENEMY_COMPACT = 0;
+final int ENEMY_TRUCK = 1;
+final int ENEMY_SPORTS = 2;
+final int ENEMY_VAN = 3;
 
 PlayerCar player;
 ArrayList<EnemyCar> enemies = new ArrayList<EnemyCar>();
@@ -19,6 +28,7 @@ int bestScore = 0;
 int spawnTimer = 0;
 int coinTimer = 0;
 int gameState = STATE_START;
+int selectedPlayerStyle = PLAYER_STYLE_RED;
 
 void setup() {
   size(400, 600);
@@ -99,14 +109,9 @@ void updateCoins() {
 
 void spawnEnemy() {
   int lane = int(random(LANE_COUNT));
-  color[] colors = {
-    color(38, 99, 220),
-    color(236, 188, 28),
-    color(179, 61, 211),
-    color(36, 194, 153)
-  };
-
-  enemies.add(new EnemyCar(laneCenter(lane) - 15, -60, colors[int(random(colors.length))]));
+  int type = randomEnemyType();
+  EnemyCar enemy = new EnemyCar(lane, -enemyHeight(type) - 10, type, enemyColor(type));
+  enemies.add(enemy);
 }
 
 void spawnCoin() {
@@ -167,22 +172,25 @@ void drawHud() {
     textSize(30);
     text("GAME OVER", width / 2, 260);
     textSize(16);
-    text("PRESS R TO RESTART", width / 2, 305);
+    text("CAR: " + playerStyleName(selectedPlayerStyle), width / 2, 296);
+    text("R TO RESTART  C TO CHANGE", width / 2, 322);
   }
 }
 
 void drawScreenMessage() {
   if (gameState == STATE_START) {
     fill(0, 190);
-    rect(42, 190, 316, 170);
+    rect(36, 166, 328, 238);
 
     fill(255);
     textAlign(CENTER, CENTER);
     textSize(30);
-    text("8-BIT HIGHWAY", width / 2, 234);
+    text("8-BIT HIGHWAY", width / 2, 208);
     textSize(16);
-    text("LEFT / RIGHT TO CHANGE LANES", width / 2, 282);
-    text("PRESS SPACE TO START", width / 2, 316);
+    text("LEFT / RIGHT TO CHANGE LANES", width / 2, 252);
+    text("CAR: " + playerStyleName(selectedPlayerStyle), width / 2, 292);
+    text("PRESS 1-4 OR C TO CHANGE", width / 2, 320);
+    text("PRESS SPACE TO START", width / 2, 360);
   } else if (gameState == STATE_PAUSED) {
     fill(0, 180);
     rect(86, 238, 228, 96);
@@ -205,10 +213,18 @@ boolean rectsOverlap(float ax, float ay, float aw, float ah, float bx, float by,
 }
 
 void keyPressed() {
-  if (gameState == STATE_START && (key == ' ' || key == ENTER || key == RETURN)) {
-    resetGame();
-  } else if (gameState == STATE_GAME_OVER && (key == 'r' || key == 'R')) {
-    resetGame();
+  if (gameState == STATE_START) {
+    if (key == ' ' || key == ENTER || key == RETURN) {
+      resetGame();
+    } else {
+      handleStyleSelection();
+    }
+  } else if (gameState == STATE_GAME_OVER) {
+    if (key == 'r' || key == 'R') {
+      resetGame();
+    } else {
+      handleStyleSelection();
+    }
   } else if (gameState == STATE_PLAYING) {
     if (key == 'p' || key == 'P') {
       gameState = STATE_PAUSED;
@@ -241,12 +257,118 @@ void resetRound() {
   coinTimer = 90;
 }
 
+void handleStyleSelection() {
+  if (key == 'c' || key == 'C') {
+    selectedPlayerStyle = (selectedPlayerStyle + 1) % PLAYER_STYLE_COUNT;
+    player.style = selectedPlayerStyle;
+  } else if (key >= '1' && key <= '4') {
+    selectedPlayerStyle = key - '1';
+    player.style = selectedPlayerStyle;
+  }
+}
+
+String playerStyleName(int style) {
+  if (style == PLAYER_STYLE_BLUE) {
+    return "BLUE RACER";
+  } else if (style == PLAYER_STYLE_GREEN) {
+    return "GREEN ROADSTER";
+  } else if (style == PLAYER_STYLE_YELLOW) {
+    return "YELLOW MUSCLE";
+  }
+  return "RED CLASSIC";
+}
+
+color playerStyleColor(int style) {
+  if (style == PLAYER_STYLE_BLUE) {
+    return color(42, 124, 236);
+  } else if (style == PLAYER_STYLE_GREEN) {
+    return color(40, 190, 118);
+  } else if (style == PLAYER_STYLE_YELLOW) {
+    return color(241, 190, 36);
+  }
+  return color(224, 38, 38);
+}
+
+int randomEnemyType() {
+  float roll = random(1);
+  if (roll < 0.32) {
+    return ENEMY_COMPACT;
+  } else if (roll < 0.56) {
+    return ENEMY_TRUCK;
+  } else if (roll < 0.80) {
+    return ENEMY_SPORTS;
+  }
+  return ENEMY_VAN;
+}
+
+float enemyWidth(int type) {
+  if (type == ENEMY_TRUCK) {
+    return 38;
+  } else if (type == ENEMY_SPORTS) {
+    return 28;
+  } else if (type == ENEMY_VAN) {
+    return 34;
+  }
+  return 30;
+}
+
+float enemyHeight(int type) {
+  if (type == ENEMY_TRUCK) {
+    return 62;
+  } else if (type == ENEMY_SPORTS) {
+    return 46;
+  } else if (type == ENEMY_VAN) {
+    return 56;
+  }
+  return 50;
+}
+
+float enemySpeedBoost(int type) {
+  if (type == ENEMY_TRUCK) {
+    return -0.7;
+  } else if (type == ENEMY_SPORTS) {
+    return 1.1;
+  } else if (type == ENEMY_VAN) {
+    return -0.2;
+  }
+  return 0;
+}
+
+color enemyColor(int type) {
+  if (type == ENEMY_TRUCK) {
+    return color(122, 132, 145);
+  } else if (type == ENEMY_SPORTS) {
+    color[] sportsColors = {
+      color(179, 61, 211),
+      color(236, 188, 28),
+      color(37, 185, 220)
+    };
+    return sportsColors[int(random(sportsColors.length))];
+  } else if (type == ENEMY_VAN) {
+    color[] vanColors = {
+      color(36, 194, 153),
+      color(226, 103, 55),
+      color(78, 103, 196)
+    };
+    return vanColors[int(random(vanColors.length))];
+  }
+
+  color[] compactColors = {
+    color(38, 99, 220),
+    color(236, 188, 28),
+    color(179, 61, 211),
+    color(36, 194, 153)
+  };
+  return compactColors[int(random(compactColors.length))];
+}
+
 class PlayerCar {
   float x;
   float y;
   float w = 30;
   float h = 50;
   int lane = 1;
+  int style = selectedPlayerStyle;
   float targetX;
 
   PlayerCar(int startLane, float startY) {
@@ -270,29 +392,33 @@ class PlayerCar {
   }
 
   void draw() {
-    drawPixelCar(x, y, color(224, 38, 38), true);
+    drawPlayerCar(x, y, style);
   }
 }
 
 class EnemyCar {
   float x;
   float y;
-  float w = 30;
-  float h = 50;
+  float w;
+  float h;
+  int type;
   color bodyColor;
 
-  EnemyCar(float startX, float startY, color c) {
-    x = startX;
+  EnemyCar(int lane, float startY, int enemyType, color c) {
+    type = enemyType;
+    w = enemyWidth(type);
+    h = enemyHeight(type);
+    x = laneCenter(lane) - w / 2;
     y = startY;
     bodyColor = c;
   }
 
   void update() {
-    y += speed;
+    y += max(2.6, speed + enemySpeedBoost(type));
   }
 
   void draw() {
-    drawPixelCar(x, y, bodyColor, false);
+    drawEnemyCar(x, y, type, bodyColor);
   }
 }
 
@@ -320,6 +446,43 @@ class Coin {
   }
 }
 
+void drawPlayerCar(float x, float y, int style) {
+  color bodyColor = playerStyleColor(style);
+
+  if (style == PLAYER_STYLE_BLUE) {
+    drawPixelCar(x, y, bodyColor, true);
+    fill(255, 255, 255);
+    rect(x + 13, y + 1, 4, 48);
+  } else if (style == PLAYER_STYLE_GREEN) {
+    drawPixelCar(x, y, bodyColor, true);
+    fill(255, 239, 94);
+    rect(x + 4, y + 22, 22, 5);
+    fill(20);
+    rect(x + 8, y + 7, 14, 9);
+  } else if (style == PLAYER_STYLE_YELLOW) {
+    drawPixelCar(x, y, bodyColor, true);
+    fill(20);
+    rect(x + 3, y + 16, 24, 4);
+    rect(x + 3, y + 30, 24, 4);
+    fill(255, 96, 66);
+    rect(x + 11, y - 4, 8, 5);
+  } else {
+    drawPixelCar(x, y, bodyColor, true);
+  }
+}
+
+void drawEnemyCar(float x, float y, int type, color bodyColor) {
+  if (type == ENEMY_TRUCK) {
+    drawTruck(x, y, bodyColor);
+  } else if (type == ENEMY_SPORTS) {
+    drawSportsCar(x, y, bodyColor);
+  } else if (type == ENEMY_VAN) {
+    drawVan(x, y, bodyColor);
+  } else {
+    drawPixelCar(x, y, bodyColor, false);
+  }
+}
+
 void drawPixelCar(float x, float y, color bodyColor, boolean playerCar) {
   fill(13);
   rect(x - 5, y + 8, 5, 12);
@@ -343,4 +506,61 @@ void drawPixelCar(float x, float y, color bodyColor, boolean playerCar) {
   fill(255, 239, 94);
   rect(x + 4, y + 1, 6, 4);
   rect(x + 20, y + 1, 6, 4);
+}
+
+void drawTruck(float x, float y, color bodyColor) {
+  fill(13);
+  rect(x - 5, y + 10, 5, 14);
+  rect(x + 38, y + 10, 5, 14);
+  rect(x - 5, y + 42, 5, 14);
+  rect(x + 38, y + 42, 5, 14);
+
+  fill(bodyColor);
+  rect(x, y + 8, 38, 50);
+  fill(104, 83, 68);
+  rect(x + 4, y + 28, 30, 28);
+  fill(224);
+  rect(x + 8, y + 12, 22, 10);
+  fill(255, 239, 94);
+  rect(x + 5, y + 2, 7, 5);
+  rect(x + 26, y + 2, 7, 5);
+}
+
+void drawSportsCar(float x, float y, color bodyColor) {
+  fill(13);
+  rect(x - 4, y + 9, 4, 10);
+  rect(x + 28, y + 9, 4, 10);
+  rect(x - 4, y + 30, 4, 10);
+  rect(x + 28, y + 30, 4, 10);
+
+  fill(bodyColor);
+  rect(x + 2, y + 7, 24, 34);
+  rect(x + 7, y, 14, 46);
+  fill(230);
+  rect(x + 7, y + 9, 14, 7);
+  rect(x + 7, y + 31, 14, 7);
+  fill(255, 239, 94);
+  rect(x + 3, y + 1, 5, 4);
+  rect(x + 20, y + 1, 5, 4);
+  fill(20);
+  rect(x + 5, y + 42, 18, 4);
+}
+
+void drawVan(float x, float y, color bodyColor) {
+  fill(13);
+  rect(x - 5, y + 9, 5, 12);
+  rect(x + 34, y + 9, 5, 12);
+  rect(x - 5, y + 38, 5, 12);
+  rect(x + 34, y + 38, 5, 12);
+
+  fill(bodyColor);
+  rect(x, y + 4, 34, 48);
+  rect(x + 4, y, 26, 56);
+  fill(232);
+  rect(x + 7, y + 8, 20, 8);
+  rect(x + 7, y + 21, 20, 7);
+  rect(x + 7, y + 35, 20, 7);
+  fill(255, 239, 94);
+  rect(x + 5, y + 1, 6, 4);
+  rect(x + 23, y + 1, 6, 4);
 }
